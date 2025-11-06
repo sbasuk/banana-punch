@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Banana Punch Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      cursor: none;
+    }
+    canvas {
+      display: block;
+      background: linear-gradient(to top, #ffe135, #fffce6);
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let score = 0;
+    const scoreDisplay = document.getElementById("score");
+
+    const bananaImage = new Image();
+    bananaImage.src = "https://www.pngmart.com/files/22/Cartoon-Banana-PNG-Image.png";
+
+    const gloveImage = new Image();
+    gloveImage.src = "https://www.kindpng.com/picc/m/7-72422_boxing-glove-cartoon-boxing-glove-transparent-background-hd.png";
+
+    const splatImage = new Image();
+    splatImage.src = "https://static.vecteezy.com/system/resources/previews/015/346/464/original/cartoon-splat-png.png";
+
+    const punchSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_5e5e6b4b7b.mp3?filename=punch-140236.mp3");
+
+    let splatReady = false;
+    splatImage.onload = () => { splatReady = true; };
+
+    const balloons = [];
+    const splats = [];
+    let mouseX = canvas.width / 2;
+    let mouseY = canvas.height / 2;
+    let isPunching = false;
+    let punchTimer = 0;
+
+    canvas.addEventListener("mousemove", (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    canvas.addEventListener("click", (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      let hitSomething = false;
+
+      balloons.forEach((balloon, index) => {
+        const dx = balloon.x - x;
+        const dy = balloon.y - y;
+        if (Math.sqrt(dx * dx + dy * dy) < balloon.radius) {
+          balloons.splice(index, 1);
+          splats.push({ x, y, life: 20 });
+          score++;
+          scoreDisplay.textContent = `Score: ${score}`;
+          hitSomething = true;
+        }
+      });
+
+      punchSound.currentTime = 0;
+      punchSound.play();
+      isPunching = true;
+      punchTimer = 5;
+    });
+
+    class Balloon {
+      constructor(x, y, speed) {
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
+        this.radius = 40;
+      }
+      draw() {
+        ctx.drawImage(bananaImage, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+      }
+      update() {
+        this.y -= this.speed;
+      }
+    }
+
+    function spawnBalloon() {
+      const x = Math.random() * (canvas.width - 80) + 40;
+      const speed = Math.random() * 2 + 1;
+      balloons.push(new Balloon(x, canvas.height + 40, speed));
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      balloons.forEach((balloon, index) => {
+        balloon.update();
+        balloon.draw();
+        if (balloon.y + balloon.radius < 0) {
+          balloons.splice(index, 1);
+        }
+      });
+
+      splats.forEach((splat, index) => {
+        if (splatReady) {
+          ctx.save();
+          ctx.globalAlpha = splat.life / 20;
+          ctx.drawImage(splatImage, splat.x - 50, splat.y - 50, 100, 100);
+          ctx.restore();
+        }
+        splat.life--;
+        if (splat.life <= 0) splats.splice(index, 1);
+      });
+
+      const gloveSize = isPunching ? 80 : 60;
+      ctx.drawImage(gloveImage, mouseX - gloveSize / 2, mouseY - gloveSize / 2, gloveSize, gloveSize);
+
+      if (punchTimer > 0) {
+        punchTimer--;
+        if (punchTimer <= 0) isPunching = false;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    setInterval(spawnBalloon, 800);
+    gameLoop();
+  </script>
+</body>
+</html>
